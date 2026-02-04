@@ -1,8 +1,8 @@
 {
-	"name": "mark-tasks",
-	"displayName": "Mark - File Task Manager",
+	"name": "filequest",
+	"displayName": "Filequest - File Task Manager",
 	"description": "Track file progress across tasks with visual indicators. Perfect for code reviews, refactoring, and team collaboration.",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"publisher": "thebadking",
 	"author": {
 		"name": "thebadking",
@@ -17,6 +17,7 @@
 	},
 	"homepage": "https://github.com/thebadking/mark-vscode#readme",
 	"license": "MIT",
+	"icon": "images/icon.png",
 	"keywords": [
 		"task",
 		"todo",
@@ -44,56 +45,58 @@
 		"commands": [
 			{
 				"command": "mark.markFileDone",
-				"title": "Mark: Mark File as Done"
+				"title": "Filequest: Mark File as Done",
+				"icon": "$(check)"
 			},
 			{
 				"command": "mark.markFileUndone",
-				"title": "Mark: Mark File as Undone"
+				"title": "Filequest: Mark File as Undone",
+				"icon": "$(circle-outline)"
 			},
 			{
 				"command": "mark.createTask",
-				"title": "Mark: Create New Task"
+				"title": "Filequest: Create New Task"
 			},
 			{
 				"command": "mark.setActiveTask",
-				"title": "Mark: Set Active Task"
+				"title": "Filequest: Set Active Task"
 			},
 			{
 				"command": "mark.listTasks",
-				"title": "Mark: List All Tasks"
+				"title": "Filequest: List All Tasks"
 			},
 			{
 				"command": "mark.showTaskFiles",
-				"title": "Mark: Show Files in Task"
+				"title": "Filequest: Show Files in Task"
 			},
 			{
 				"command": "mark.deleteTask",
-				"title": "Mark: Delete Task"
+				"title": "Filequest: Delete Task"
 			},
 			{
 				"command": "mark.refreshTaskView",
-				"title": "Mark: Refresh Task View",
+				"title": "Filequest: Refresh Task View",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "mark.removeFileFromTask",
-				"title": "Mark: Remove File from Task"
+				"title": "Filequest: Remove File from Task"
 			},
 			{
 				"command": "mark.toggleViewMode",
-				"title": "Mark: Toggle Flat/Tree View",
+				"title": "Filequest: Toggle Flat/Tree View",
 				"icon": "$(list-tree)"
 			},
 			{
 				"command": "mark.openFile",
-				"title": "Mark: Open File"
+				"title": "Filequest: Open File"
 			}
 		],
 		"viewsContainers": {
 			"activitybar": [
 				{
 					"id": "mark-explorer",
-					"title": "Mark Tasks",
+					"title": "Filequest",
 					"icon": "$(checklist)"
 				}
 			]
@@ -133,11 +136,13 @@
 				{
 					"command": "mark.markFileDone",
 					"when": "view == markTaskView && viewItem == file",
+					"icon": "$(check)",
 					"group": "inline"
 				},
 				{
 					"command": "mark.markFileUndone",
 					"when": "view == markTaskView && viewItem == file",
+					"icon": "$(circle-outline)",
 					"group": "inline"
 				},
 				{

@@ -15,7 +15,7 @@ interface Task {
 }
 
 interface TaskData {
-	tasks: { [taskName: string]: Task };
+	tasks: Record<string, Task>;
 	activeTask?: string;
 }
 
@@ -26,7 +26,7 @@ class TaskManager {
 
 	constructor(workspaceRoot: string) {
 		this.workspaceRoot = workspaceRoot;
-		this.dataFilePath = path.join(workspaceRoot, '.mark-tasks.json');
+		this.dataFilePath = path.join(workspaceRoot, '.filequest-tasks.json');
 		this.load();
 	}
 
@@ -72,7 +72,7 @@ class TaskManager {
 
 	markFileDone(taskName: string, filePath: string): boolean {
 		const task = this.data.tasks[taskName];
-		if (!task) return false;
+		if (!task) {return false;}
 
 		const relativePath = this.toRelativePath(filePath);
 		const existingFile = task.files.find(f => f.path === relativePath);
@@ -93,7 +93,7 @@ class TaskManager {
 
 	markFileUndone(taskName: string, filePath: string): boolean {
 		const task = this.data.tasks[taskName];
-		if (!task) return false;
+		if (!task) {return false;}
 
 		const relativePath = this.toRelativePath(filePath);
 		const existingFile = task.files.find(f => f.path === relativePath);
@@ -114,7 +114,7 @@ class TaskManager {
 
 	isFileDone(taskName: string, filePath: string): boolean {
 		const task = this.data.tasks[taskName];
-		if (!task) return false;
+		if (!task) {return false;}
 
 		const relativePath = this.toRelativePath(filePath);
 		const file = task.files.find(f => f.path === relativePath);
@@ -123,13 +123,13 @@ class TaskManager {
 
 	isFileInTask(taskName: string, filePath: string): boolean {
 		const task = this.data.tasks[taskName];
-		if (!task) return false;
+		if (!task) {return false;}
 
 		const relativePath = this.toRelativePath(filePath);
 		return task.files.some(f => f.path === relativePath);
 	}
 
-	createTask(taskName: string, setAsActive: boolean = false): boolean {
+	createTask(taskName: string, setAsActive = false): boolean {
 		if (this.data.tasks[taskName]) {
 			return false;
 		}
@@ -160,7 +160,7 @@ class TaskManager {
 		return false;
 	}
 
-	getTaskFiles(taskName: string): Array<{absolutePath: string, done: boolean}> {
+	getTaskFiles(taskName: string): {absolutePath: string, done: boolean}[] {
 		const task = this.data.tasks[taskName];
 		if (!task) {
 			return [];
@@ -194,7 +194,7 @@ class TaskManager {
 
 	async addDirectoryToTask(taskName: string, dirPath: string, asDone: boolean): Promise<number> {
 		const task = this.data.tasks[taskName];
-		if (!task) return 0;
+		if (!task) {return 0;}
 
 		let addedCount = 0;
 		const entries = await this.getFilesRecursively(dirPath);
@@ -258,7 +258,7 @@ class FileDecorationProvider implements vscode.FileDecorationProvider {
 
 	provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
 		const activeTask = this.taskManager.getActiveTask();
-		if (!activeTask) return undefined;
+		if (!activeTask) {return undefined;}
 
 		if (this.taskManager.isFileDone(activeTask, uri.fsPath)) {
 			return {
@@ -277,6 +277,7 @@ class FileDecorationProvider implements vscode.FileDecorationProvider {
 	}
 
 	refresh(): void {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this._onDidChangeFileDecorations.fire(undefined as any);
 	}
 }
@@ -384,7 +385,7 @@ class TaskTreeDataProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 		return Promise.resolve([]);
 	}
 
-	private getFileItems(files: Array<{absolutePath: string, done: boolean}>, taskName: string): TaskTreeItem[] {
+	private getFileItems(files: {absolutePath: string, done: boolean}[], taskName: string): TaskTreeItem[] {
 		if (this.flatView) {
 			return files.map(file => {
 				return new TaskTreeItem(
@@ -412,18 +413,18 @@ class TaskTreeDataProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Mark extension is now active!');
+	console.log('Filequest extension is now active!');
 
 	let taskManager: TaskManager | undefined;
 	let decorationProvider: FileDecorationProvider | undefined;
 	let taskTreeDataProvider: TaskTreeDataProvider | undefined;
 	let fileWatcher: vscode.FileSystemWatcher | undefined;
 
-	const getTaskManager = (showNoWorkspaceError: boolean = true): TaskManager | undefined => {
+	const getTaskManager = (showNoWorkspaceError = true): TaskManager | undefined => {
 		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (!workspaceRoot) {
 			if (showNoWorkspaceError) {
-				vscode.window.showErrorMessage('No workspace folder open. Please open a folder to use Mark extension.');
+				vscode.window.showErrorMessage('No workspace folder open. Please open a folder to use Filequest.');
 			}
 			return undefined;
 		}
@@ -433,7 +434,7 @@ export function activate(context: vscode.ExtensionContext) {
 			taskTreeDataProvider?.setTaskManager(taskManager);
 
 			// Watch for external changes to the database file
-			const dataFilePattern = new vscode.RelativePattern(workspaceRoot, '.mark-tasks.json');
+			const dataFilePattern = new vscode.RelativePattern(workspaceRoot, '.filequest-tasks.json');
 			fileWatcher = vscode.workspace.createFileSystemWatcher(dataFilePattern);
 
 			const reloadAndRefresh = () => {
@@ -471,7 +472,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const markFileDone = vscode.commands.registerCommand('mark.markFileDone', async (uri?: vscode.Uri) => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const filePath = uri?.fsPath || vscode.window.activeTextEditor?.document.uri.fsPath;
 		if (!filePath) {
@@ -488,7 +489,7 @@ export function activate(context: vscode.ExtensionContext) {
 					prompt: 'No tasks exist. Create a new task',
 					placeHolder: 'task-name'
 				});
-				if (!newTaskName) return;
+				if (!newTaskName) {return;}
 				manager.createTask(newTaskName, true);
 				taskName = newTaskName;
 			} else {
@@ -496,14 +497,14 @@ export function activate(context: vscode.ExtensionContext) {
 				const selected = await vscode.window.showQuickPick(choices, {
 					placeHolder: 'Select a task to add this file to'
 				});
-				if (!selected) return;
+				if (!selected) {return;}
 
 				if (selected === '$(add) Create new task') {
 					const newTaskName = await vscode.window.showInputBox({
 						prompt: 'Enter task name',
 						placeHolder: 'task-name'
 					});
-					if (!newTaskName) return;
+					if (!newTaskName) {return;}
 					manager.createTask(newTaskName, true);
 					taskName = newTaskName;
 				} else {
@@ -530,7 +531,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const markFileUndone = vscode.commands.registerCommand('mark.markFileUndone', async (uri?: vscode.Uri) => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const filePath = uri?.fsPath || vscode.window.activeTextEditor?.document.uri.fsPath;
 		if (!filePath) {
@@ -547,7 +548,7 @@ export function activate(context: vscode.ExtensionContext) {
 					prompt: 'No tasks exist. Create a new task',
 					placeHolder: 'task-name'
 				});
-				if (!newTaskName) return;
+				if (!newTaskName) {return;}
 				manager.createTask(newTaskName, true);
 				taskName = newTaskName;
 			} else {
@@ -555,14 +556,14 @@ export function activate(context: vscode.ExtensionContext) {
 				const selected = await vscode.window.showQuickPick(choices, {
 					placeHolder: 'Select a task to add this file to'
 				});
-				if (!selected) return;
+				if (!selected) {return;}
 
 				if (selected === '$(add) Create new task') {
 					const newTaskName = await vscode.window.showInputBox({
 						prompt: 'Enter task name',
 						placeHolder: 'task-name'
 					});
-					if (!newTaskName) return;
+					if (!newTaskName) {return;}
 					manager.createTask(newTaskName, true);
 					taskName = newTaskName;
 				} else {
@@ -589,7 +590,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const createTask = vscode.commands.registerCommand('mark.createTask', async () => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 		const taskName = await vscode.window.showInputBox({
 			prompt: 'Enter task name',
 			placeHolder: 'my-task'
@@ -614,7 +615,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const setActiveTask = vscode.commands.registerCommand('mark.setActiveTask', async () => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const tasks = manager.getAllTasks();
 		if (tasks.length === 0) {
@@ -632,7 +633,7 @@ export function activate(context: vscode.ExtensionContext) {
 			placeHolder: 'Select active task'
 		});
 
-		if (!selected) return;
+		if (!selected) {return;}
 
 		if (selected.label === '$(circle-slash) Clear active task') {
 			manager.setActiveTask(undefined);
@@ -648,7 +649,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const listTasks = vscode.commands.registerCommand('mark.listTasks', () => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const tasks = manager.getAllTasks();
 		if (tasks.length === 0) {
@@ -669,7 +670,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const showTaskFiles = vscode.commands.registerCommand('mark.showTaskFiles', async () => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const tasks = manager.getAllTasks();
 		if (tasks.length === 0) {
@@ -702,7 +703,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const deleteTask = vscode.commands.registerCommand('mark.deleteTask', async () => {
 		const manager = getTaskManager();
-		if (!manager) return;
+		if (!manager) {return;}
 
 		const tasks = manager.getAllTasks();
 		if (tasks.length === 0) {
@@ -737,7 +738,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const removeFileFromTask = vscode.commands.registerCommand('mark.removeFileFromTask', async (item: TaskTreeItem) => {
 		const manager = getTaskManager();
-		if (!manager || !item.filePath || !item.taskName) return;
+		if (!manager || !item.filePath || !item.taskName) {return;}
 
 		if (manager.removeFileFromTask(item.taskName, item.filePath)) {
 			taskTreeDataProvider?.refresh();
@@ -746,7 +747,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	const openFile = vscode.commands.registerCommand('mark.openFile', async (filePath: string) => {
-		if (!filePath) return;
+		if (!filePath) {return;}
 		const uri = vscode.Uri.file(filePath);
 		await vscode.window.showTextDocument(uri);
 	});
