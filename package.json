@@ -10,12 +10,12 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/thebadking/mark-vscode"
+		"url": "https://github.com/thebadking/filequest"
 	},
 	"bugs": {
-		"url": "https://github.com/thebadking/mark-vscode/issues"
+		"url": "https://github.com/thebadking/filequest/issues"
 	},
-	"homepage": "https://github.com/thebadking/mark-vscode#readme",
+	"homepage": "https://github.com/thebadking/filequest#readme",
 	"license": "MIT",
 	"icon": "images/icon.png",
 	"keywords": [
