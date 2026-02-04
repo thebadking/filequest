@@ -317,7 +317,12 @@ class TaskTreeDataProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 	private flatView = false;
 	private selectedTask: string | undefined;
 
-	constructor(private taskManager: TaskManager) {}
+	constructor(private taskManager?: TaskManager) {}
+
+	setTaskManager(taskManager: TaskManager | undefined): void {
+		this.taskManager = taskManager;
+		this.refresh();
+	}
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
@@ -339,21 +344,25 @@ class TaskTreeDataProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 
 	getChildren(element?: TaskTreeItem): Thenable<TaskTreeItem[]> {
 		if (!element) {
-			const tasks = this.taskManager.getAllTasks();
+			const manager = this.taskManager;
+			if (!manager) {
+				return Promise.resolve([]);
+			}
+			const tasks = manager.getAllTasks();
 			if (tasks.length === 0) {
 				return Promise.resolve([]);
 			}
 
 			if (this.selectedTask) {
-				const files = this.taskManager.getTaskFiles(this.selectedTask);
+				const files = manager.getTaskFiles(this.selectedTask);
 				return Promise.resolve(this.getFileItems(files, this.selectedTask));
 			}
 
 			return Promise.resolve(
 				tasks.map(task => {
-					const files = this.taskManager.getTaskFiles(task.name);
+					const files = manager.getTaskFiles(task.name);
 					const doneCount = files.filter(f => f.done).length;
-					const activeMarker = this.taskManager.getActiveTask() === task.name ? ' ★' : '';
+					const activeMarker = manager.getActiveTask() === task.name ? ' ★' : '';
 					const label = `${task.name}${activeMarker} (${doneCount}/${files.length})`;
 					return new TaskTreeItem(
 						label,
@@ -365,6 +374,9 @@ class TaskTreeDataProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 				})
 			);
 		} else if (element.itemType === 'task' && element.taskName) {
+			if (!this.taskManager) {
+				return Promise.resolve([]);
+			}
 			const files = this.taskManager.getTaskFiles(element.taskName);
 			return Promise.resolve(this.getFileItems(files, element.taskName));
 		}
@@ -405,25 +417,57 @@ export function activate(context: vscode.ExtensionContext) {
 	let taskManager: TaskManager | undefined;
 	let decorationProvider: FileDecorationProvider | undefined;
 	let taskTreeDataProvider: TaskTreeDataProvider | undefined;
+	let fileWatcher: vscode.FileSystemWatcher | undefined;
 
-	const getTaskManager = (): TaskManager | undefined => {
+	const getTaskManager = (showNoWorkspaceError: boolean = true): TaskManager | undefined => {
 		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (!workspaceRoot) {
-			vscode.window.showErrorMessage('No workspace folder open. Please open a folder to use Mark extension.');
+			if (showNoWorkspaceError) {
+				vscode.window.showErrorMessage('No workspace folder open. Please open a folder to use Mark extension.');
+			}
 			return undefined;
 		}
 		if (!taskManager) {
 			taskManager = new TaskManager(workspaceRoot);
 			decorationProvider = new FileDecorationProvider(taskManager);
-			taskTreeDataProvider = new TaskTreeDataProvider(taskManager);
+			taskTreeDataProvider?.setTaskManager(taskManager);
+
+			// Watch for external changes to the database file
+			const dataFilePattern = new vscode.RelativePattern(workspaceRoot, '.mark-tasks.json');
+			fileWatcher = vscode.workspace.createFileSystemWatcher(dataFilePattern);
+
+			const reloadAndRefresh = () => {
+				taskManager?.reload();
+				decorationProvider?.refresh();
+				taskTreeDataProvider?.refresh();
+			};
+
+			fileWatcher.onDidChange(reloadAndRefresh);
+			fileWatcher.onDidCreate(reloadAndRefresh);
+			fileWatcher.onDidDelete(reloadAndRefresh);
 
 			context.subscriptions.push(
 				vscode.window.registerFileDecorationProvider(decorationProvider),
-				vscode.window.registerTreeDataProvider('markTaskView', taskTreeDataProvider)
+				fileWatcher
 			);
 		}
 		return taskManager;
 	};
+
+	if (!taskTreeDataProvider) {
+		taskTreeDataProvider = new TaskTreeDataProvider();
+		context.subscriptions.push(
+			vscode.window.registerTreeDataProvider('markTaskView', taskTreeDataProvider)
+		);
+	}
+
+	getTaskManager(false);
+
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			getTaskManager(false);
+		})
+	);
 
 	const markFileDone = vscode.commands.registerCommand('mark.markFileDone', async (uri?: vscode.Uri) => {
 		const manager = getTaskManager();
@@ -682,6 +726,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	const refreshTaskView = vscode.commands.registerCommand('mark.refreshTaskView', () => {
+		taskManager?.reload();
+		decorationProvider?.refresh();
 		taskTreeDataProvider?.refresh();
 	});
 
